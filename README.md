@@ -1,3 +1,74 @@
+# Node.js JWT 會員驗證 API
+
+以健身房後台為情境，練習使用 Express 建立註冊與登入 API、以 bcrypt 雜湊密碼，並用 JWT 保護個人資料路由。
+
+**技術**：Node.js、Express、bcrypt、jsonwebtoken<br>
+**驗證工具**：Swagger UI、Postman、Jest、Supertest<br>
+**本機重現**：請參考[快速開始](#快速開始)，啟動後可透過 Swagger UI 操作 API。
+
+## 我的實作範圍
+
+課程提供專案骨架、Swagger API 規格、初始測試資料、Postman Collection 和驗收測試。本人的實作與修改如下。
+
+| 程式碼 | 本人完成或修改的內容 |
+|---|---|
+| [`middlewares/verifyToken.js`](middlewares/verifyToken.js) | 撰寫 JWT 驗證中介層，從 `Authorization` 標頭取出 Bearer token，並使用 `jwt.verify()` 驗證。通過後將 token 內容放入 `req.user`，再呼叫 `next()` 讓路由繼續處理。未帶授權資料或驗證失敗時回傳 `401`。 |
+| [`routes/auth.js`](routes/auth.js) | 完成註冊、登入與個人資料查詢共 3 支 API。註冊時檢查信箱與密碼是否填寫、信箱是否重複，並使用 bcrypt 雜湊密碼後再儲存。登入時比對密碼，驗證成功後簽發 JWT。`GET /auth/me` 受 JWT 驗證保護，驗證通過後回傳 token 中的使用者資料。 |
+| [`app.js`](app.js) | 組裝 Express 應用程式，掛載 CORS、JSON 請求解析與 `/auth` 路由，並加入 `404` 回應及集中式錯誤處理。匯出 `app`，讓伺服器啟動與課程測試可分別使用。 |
+
+## API 功能
+
+| 方法與路徑 | 功能 | 成功回應 |
+|---|---|---|
+| `POST /auth/register` | 檢查註冊欄位與信箱是否重複，將密碼雜湊後儲存 | `201`，註冊成功 |
+| `POST /auth/login` | 比對帳號與密碼，驗證成功後簽發 JWT | `200`，回傳 token |
+| `GET /auth/me` | 驗證 Bearer token，回傳 token 內的使用者資料 | `200`，回傳 `user` |
+
+## Swagger UI 手動驗證紀錄
+
+- 驗證日期：2026-11-20
+- 驗證環境：本機
+- 驗證工具：Swagger UI（ http://localhost:3000/docs ）
+- 驗證範圍：註冊、登入、個人資料查詢與 JWT 驗證
+
+| 編號 | API | 操作情境 | 預期結果 | 實際結果 | 判定 |
+|---|---|---|---|---|---|
+| 01 | `POST /auth/register` | 使用尚未註冊的測試信箱與密碼 | `201`，回傳「註冊成功」 |  `201`，「註冊成功」 | 通過 |
+| 02 | `POST /auth/register` | 使用同一信箱再次註冊 | `400`，回傳「信箱已被註冊」 |  `400`，「信箱已被註冊」 | 通過 |
+| 03 | `POST /auth/login` | 使用案例 01 的正確帳密登入 | `200`，回傳 `token` | `200`，回傳 `token`  | 通過 |
+| 04 | `POST /auth/login` | 使用已註冊的信箱與錯誤密碼 | `401`，回傳「帳號或密碼錯誤」 |  `401`，「帳號或密碼錯誤」 | 通過 |
+| 05 | `GET /auth/me` | 帶入案例 03 回傳的有效 token | `200`，回傳 `user.id` 與 `user.email`，信箱與登入帳號一致 |  `200`，回傳 `user.id` 與 `user.email`，信箱與登入帳號一致 | 通過 |
+![Swagger UI 實測：GET /auth/me 回傳 HTTP 200](./swagger-me-200.png)
+| 06 | `GET /auth/me` | 清除 Swagger UI 授權，再送出請求 | `401`，回傳「請先登入」 | `401`，「請先登入」 | 通過 |
+| 07 | `GET /auth/me` | 設定無效 token，再送出請求 | `401`，回傳「Token 無效或已過期」 | `401`，「Token 無效或已過期」 | 通過 |
+
+### 驗證摘要
+
+- 共 7 個案例，通過 7 項、未通過 0 項、待驗證 0 項。
+- 異常或補充說明：無。
+
+## 我對驗證流程的理解
+
+- **註冊｜`bcrypt.hash()`**：先檢查信箱與密碼是否有填寫，以及信箱是否已被註冊。檢查通過後，將密碼轉為雜湊值，再把帳號存入記憶體。
+- **登入｜`bcrypt.compare()` 與 `jwt.sign()`**：使用 bcrypt 比對輸入的密碼與已儲存的雜湊值。帳號不存在或密碼錯誤時，都回傳 `401` 與相同的錯誤訊息。比對成功後，簽發包含使用者 `id` 與 `email` 的 JWT，有效期為 30 天。
+- **查詢個人資料｜`jwt.verify()` 與 `next()`**：呼叫 `GET /auth/me` 時，中介層從 `Authorization` 標頭取出 Bearer token，驗證簽章與有效期。通過後，把 token 中的資料放入 `req.user`，再呼叫 `next()` 交給路由回應。未帶授權資料或 token 驗證失敗時，回傳 `401`。
+
+## 專案限制
+
+- **資料儲存在記憶體**：本作業未串接資料庫。伺服器重啟後，執行期間新增的帳號會消失。
+- **個人資料取自 token**：`GET /auth/me` 回傳 `req.user`，也就是驗證後的 JWT payload。這支 API 不會重新查詢帳號或確認資料是否已更新。
+
+
+
+<br>
+<br>
+<br>
+
+**------------------------------------------------------------- 以下是原課程作業說明 ------------------------------------------------------------**
+<br>
+<br>
+
+
 # 第四週作業：健身房 Admin 登入系統（JWT + bcrypt）
 
 ## 情境與任務描述
