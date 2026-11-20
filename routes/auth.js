@@ -31,22 +31,25 @@ const router = express.Router();
 // - 注意：handler 是 async function
 //作答區
 router.post('/register', async (req, res) => {
-    const {email, password} = req.body;
+    const { email, password } = req.body;
 
     const emailExist = users.find(user => {
         return user.email === email;
     });
 
-    if(!email || !password){
-        return res.status(400).json({status: 'false', message: '信箱或密碼未填寫'});
+    if (!email || !password) {
+        return res.status(400).json({ status: 'false', message: '信箱或密碼未填寫' });
     }
 
-    if(emailExist !== undefined){
-        return res.status(400).json({status: 'false', message: '信箱已被註冊'});
+    if (emailExist !== undefined) {
+        return res.status(400).json({ status: 'false', message: '信箱已被註冊' });
     }
 
     const hash = await bcrypt.hash(password, 10);
-    users.push({id: nextId, email, password: hash});
+    users.push({ id: nextId, email, password: hash });
+
+    nextId++; // 新增：成功存入帳號後，將 ID 加 1
+
     res.status(201).json({ status: 'success', message: '註冊成功' });
 });
 
@@ -65,7 +68,7 @@ router.post('/register', async (req, res) => {
 // - 注意：handler 是 async function
 //作答區
 router.post('/login', async (req, res) => {
-    const {email,password} = req.body;
+    const { email, password } = req.body;
 
     const user = users.find(u => {
         return u.email === email;
@@ -73,12 +76,12 @@ router.post('/login', async (req, res) => {
 
     const ok = user && (await bcrypt.compare(password, user.password));
 
-    if(!ok){
-        return res.status(401).json({status: 'false', message: '帳號或密碼錯誤'});
+    if (!ok) {
+        return res.status(401).json({ status: 'false', message: '帳號或密碼錯誤' });
     }
 
-    const token = jwt.sign({id: user.id, email: user.email}, process.env.JWT_SECRET, {expiresIn: '30d'});
-    res.status(200).json({status: 'success', token});
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.status(200).json({ status: 'success', token });
 });
 
 // ───────────────────────────────────────────────────────────
@@ -90,7 +93,7 @@ router.post('/login', async (req, res) => {
 // - 輸出：200 + { status: 'success', user: ... }
 //作答區
 router.get('/me', verifyToken, (req, res) => {
-    return res.status(200).json({status: 'success', user: req.user});
+    return res.status(200).json({ status: 'success', user: req.user });
 });
 
 module.exports = router;
