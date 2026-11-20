@@ -37,10 +37,15 @@
 | 02 | `POST /auth/register` | 使用同一信箱再次註冊 | `400`，回傳「信箱已被註冊」 |  `400`，「信箱已被註冊」 | 通過 |
 | 03 | `POST /auth/login` | 使用案例 01 的正確帳密登入 | `200`，回傳 `token` | `200`，回傳 `token`  | 通過 |
 | 04 | `POST /auth/login` | 使用已註冊的信箱與錯誤密碼 | `401`，回傳「帳號或密碼錯誤」 |  `401`，「帳號或密碼錯誤」 | 通過 |
-| 05 | `GET /auth/me` | 帶入案例 03 回傳的有效 token | `200`，回傳 `user.id` 與 `user.email`，信箱與登入帳號一致 |  `200`，回傳 `user.id` 與 `user.email`，信箱與登入帳號一致 | 通過 |
-![Swagger UI 實測：GET /auth/me 回傳 HTTP 200](./images/swagger-me-200.png)
+| 05 | `GET /auth/me` | 帶入案例 03 回傳的有效 token | `200`，回傳 `user.id` 與 `user.email`，信箱與登入帳號一致 | `200`，回傳 `user.id` 與 `user.email`，信箱與登入帳號一致 | 通過 |
 | 06 | `GET /auth/me` | 清除 Swagger UI 授權，再送出請求 | `401`，回傳「請先登入」 | `401`，「請先登入」 | 通過 |
 | 07 | `GET /auth/me` | 設定無效 token，再送出請求 | `401`，回傳「Token 無效或已過期」 | `401`，「Token 無效或已過期」 | 通過 |
+
+### Swagger UI 實測截圖
+
+**案例 05｜帶有效 token 查詢 `/auth/me`，回傳 HTTP 200**
+
+![Swagger UI 實測：GET /auth/me 回傳 HTTP 200](./images/swagger-me-200.png)
 
 ### 驗證摘要
 
